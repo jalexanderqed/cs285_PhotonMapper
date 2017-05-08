@@ -1,11 +1,15 @@
 #include <windows.h>
 #include <stdio.h>
+#include <iostream>
 #include "scene_io.h"
 #include "Timer.h"
+#include "lib\glm\glm.hpp"
+#include "lib\glm\ext.hpp"
 
 #define IMAGE_WIDTH		1500
 #define IMAGE_HEIGHT	1500
 
+using namespace std;
 
 typedef unsigned char u08;
 
@@ -56,6 +60,9 @@ int main(int argc, char *argv[]) {
 	Timer total_timer;
 	total_timer.startTimer();
 
+	glm::vec3 testVec(1, 1, 1);
+	cout << glm::to_string(testVec) << endl;
+
 	loadScene("../Scenes/test1.scene");
 
 	/* write your ray tracer here */
@@ -69,5 +76,5 @@ int main(int argc, char *argv[]) {
 	total_timer.stopTimer();
 	fprintf(stderr, "Total time: %.5lf secs\n\n", total_timer.getTime());
 	
-	return 1;
+	return 0;
 }

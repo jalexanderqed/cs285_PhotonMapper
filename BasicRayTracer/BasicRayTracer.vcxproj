@@ -91,8 +91,34 @@
     <ClCompile Include="scene_io.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="lib\glm\common.hpp" />
+    <ClInclude Include="lib\glm\exponential.hpp" />
+    <ClInclude Include="lib\glm\ext.hpp" />
+    <ClInclude Include="lib\glm\fwd.hpp" />
+    <ClInclude Include="lib\glm\geometric.hpp" />
+    <ClInclude Include="lib\glm\glm.hpp" />
+    <ClInclude Include="lib\glm\integer.hpp" />
+    <ClInclude Include="lib\glm\mat2x2.hpp" />
+    <ClInclude Include="lib\glm\mat2x3.hpp" />
+    <ClInclude Include="lib\glm\mat2x4.hpp" />
+    <ClInclude Include="lib\glm\mat3x2.hpp" />
+    <ClInclude Include="lib\glm\mat3x3.hpp" />
+    <ClInclude Include="lib\glm\mat3x4.hpp" />
+    <ClInclude Include="lib\glm\mat4x2.hpp" />
+    <ClInclude Include="lib\glm\mat4x3.hpp" />
+    <ClInclude Include="lib\glm\mat4x4.hpp" />
+    <ClInclude Include="lib\glm\matrix.hpp" />
+    <ClInclude Include="lib\glm\packing.hpp" />
+    <ClInclude Include="lib\glm\trigonometric.hpp" />
+    <ClInclude Include="lib\glm\vec2.hpp" />
+    <ClInclude Include="lib\glm\vec3.hpp" />
+    <ClInclude Include="lib\glm\vec4.hpp" />
+    <ClInclude Include="lib\glm\vector_relational.hpp" />
     <ClInclude Include="scene_io.h" />
     <ClInclude Include="Timer.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="lib\glm\CMakeLists.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
