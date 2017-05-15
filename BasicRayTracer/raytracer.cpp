@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
 	Timer total_timer;
 	total_timer.startTimer();
 
-	loadScene("../Scenes/test3.scene");
+	loadScene("../Scenes/test5.scene");
 
 	/* write your ray tracer here */
 	render();

@@ -4,6 +4,10 @@
 #define CLIP_DIST 100
 #define EPSILON 0.00001f
 
+#define LIGHT_C1 0.25f
+#define LIGHT_C2 0.1f
+#define LIGHT_C3 0.01f
+
 #define DEBUG
 
 const glm::vec3 BACK_COLOR(0.2f, 0.2f, 0.2f);
@@ -31,10 +35,6 @@ public:
 		horizFov = (((float)IMAGE_WIDTH) / IMAGE_HEIGHT) * vertFov;
 		screenVert = CAMERA_C * tan(vertFov / 2) * up;
 		screenHoriz = CAMERA_C * tan(horizFov / 2) * right;
-
-		cerr << "Up: " << glm::to_string(up) << endl;
-		cerr << "Forward: " << glm::to_string(forward) << endl;
-		cerr << "Right: " << glm::to_string(right) << endl;
 	}
 };
 
@@ -70,24 +70,6 @@ public:
 		position{ p }, poly{ py } {}
 };
 
-/*
-class PolySetIntersectionPoint {
-public:
-	glm::vec3 position;
-	PolySetIO *polySet;
-	PolyIntersectionPoint polyIntersect;
-
-	PolySetIntersectionPoint() :
-		polySet{ NULL } {}
-
-	PolySetIntersectionPoint(const PolySetIntersectionPoint& p) :
-		position{ p.position }, polySet{ p.polySet }, polyIntersect{ p.polyIntersect } {}
-
-	PolySetIntersectionPoint(const glm::vec3& p, PolySetIO *ps, const PolyIntersectionPoint& pi) :
-		position{ p }, polySet{ ps }, polyIntersect{ pi } {}
-};
-*/
-
 class IntersectionPoint {
 public:
 	glm::vec3 position;
@@ -114,7 +96,9 @@ IntersectionPoint intersectSphere(const glm::vec3& vec, const glm::vec3& origin,
 	float distFromCenter = sqrt(glm::length2(oToC) - rayProj * rayProj);
 	if (distFromCenter > objData->radius) return point;
 	float halfChordLength = sqrt(objData->radius * objData->radius - distFromCenter * distFromCenter);
-	float distToIntersect = rayProj - halfChordLength;
+	float distToIntersect;
+	if(glm::length(oToC) > objData->radius) distToIntersect = rayProj - halfChordLength;
+	else distToIntersect = rayProj + halfChordLength;
 
 	point = { (distToIntersect * vec) + origin, sphere, PolyIntersectionPoint() };
 
@@ -226,15 +210,25 @@ glm::vec3 getNormal(const IntersectionPoint& iPoint) {
 	return normal;
 }
 
-glm::vec3 lightContrib(Light l, glm::vec3 normal, glm::vec3 in, glm::vec3 dirToLight, glm::vec3 diffuse, glm::vec3 specular, float shiny) {
+glm::vec3 lightContrib(const glm::vec3& lightColor,
+	const glm::vec3& normal, const glm::vec3& inDir,
+	const glm::vec3& dirToLight, float distToLight, 
+	const glm::vec3& diffuseColor, const glm::vec3& specularColor,
+	float shiny) {
 	glm::vec3 contrib;
 
-	glm::vec3 out = -1 * in;
-	
-	float diffuseContrib = max(0.0f, glm::dot(normal, dirToLight));
-	contrib += diffuseContrib * diffuse;
+	glm::vec3 outDir = -1 * inDir;
 
-	return contrib;
+	float diffuseContrib = max(0.0f, glm::dot(normal, dirToLight));
+	contrib += diffuseContrib * diffuseColor;
+
+	glm::vec3 lightReflectDir = 2 * glm::dot(normal, dirToLight) * normal - dirToLight;
+	float specularContrib = max(0.0f, pow(glm::dot(lightReflectDir, outDir), shiny * 40));
+	contrib += specularContrib * specularColor;
+
+	float atten = min(1.0f, 1.0f / (LIGHT_C1 + LIGHT_C2 * distToLight + LIGHT_C3 * distToLight * distToLight));
+
+	return atten * contrib * lightColor;
 }
 
 glm::vec3 shadeIntersect(const IntersectionPoint& iPoint, const glm::vec3& inVec, SceneIO* scene) {
@@ -242,7 +236,7 @@ glm::vec3 shadeIntersect(const IntersectionPoint& iPoint, const glm::vec3& inVec
 		cerr << "ERROR: More than one material not supported." << endl;
 		return glm::vec3();
 	}
-	
+
 	glm::vec3 normal = getNormal(iPoint);
 	glm::vec3 diffuse(iPoint.object->material->diffColor[0], iPoint.object->material->diffColor[1], iPoint.object->material->diffColor[2]);
 	glm::vec3 specular(iPoint.object->material->specColor[0], iPoint.object->material->specColor[1], iPoint.object->material->specColor[2]);
@@ -252,28 +246,82 @@ glm::vec3 shadeIntersect(const IntersectionPoint& iPoint, const glm::vec3& inVec
 	float trans = iPoint.object->material->shininess;
 
 	glm::vec3 color = ambient * diffuse;
-	
+
 	for (Light l : lights) {
-		glm::vec3 dir;
+		glm::vec3 dirToLight;
 		float dist2;
 
 		switch (l.sceneLight->type) {
 		case SPOT_LIGHT:
 		case POINT_LIGHT:
-			dir = l.position - iPoint.position;
-			dist2 = glm::length2(dir);
+			dirToLight = l.position - iPoint.position;
+			dist2 = glm::length2(dirToLight);
 			break;
 		case DIRECTIONAL_LIGHT:
-			dir = -1 * l.direction;
+			dirToLight = -1 * l.direction;
 			break;
 		}
 
-		dir = glm::normalize(dir);
-		IntersectionPoint ip = intersectScene(dir, iPoint.position + EPSILON * dir, scene);
-		
-		if (ip.object == NULL || 
-			(l.sceneLight->type != DIRECTIONAL_LIGHT && glm::distance2(ip.position, l.position) > dist2)) {
-			color += lightContrib(l, normal, inVec, dir, diffuse, specular, shiny);
+		dirToLight = glm::normalize(dirToLight);
+
+		IntersectionPoint ip = intersectScene(dirToLight, iPoint.position + EPSILON * dirToLight, scene);
+		glm::vec3 seenColor(1, 1, 1);
+		int count = 0;
+		while (!(ip.object == NULL ||
+			(l.sceneLight->type != DIRECTIONAL_LIGHT &&
+				glm::distance2(ip.position, l.position) > dist2) ||
+			ip.object->material->ktran < EPSILON)) {
+
+			count++;
+			glm::vec3 objColor(ip.object->material->diffColor[0],
+				ip.object->material->diffColor[1],
+				ip.object->material->diffColor[2]);
+			objColor *= 1.0f / max(objColor.r, max(objColor.g, objColor.b));
+			seenColor = seenColor * ip.object->material->ktran * objColor;
+
+			ip = intersectScene(dirToLight, ip.position + 1 * dirToLight, scene);
+
+			if (count >= 1000) {
+				cout << glm::to_string(dirToLight) << endl;
+				cout << glm::to_string(ip.position) << endl;
+				cout << glm::to_string(ip.position + 1 * dirToLight) << endl;
+				cout << glm::to_string(l.position) << endl;
+
+				switch (ip.object->type) {
+				case SPHERE_OBJ:
+					cout << "Sphere" << endl;
+					break;
+				case POLYSET_OBJ:
+					cout << "Polyset" << endl;
+					break;
+				}
+				cout << endl;
+
+				ip = intersectScene(dirToLight, ip.position + 1 * dirToLight, scene);
+
+				cout << glm::to_string(dirToLight) << endl;
+				cout << glm::to_string(ip.position) << endl;
+				cout << glm::to_string(ip.position + 1 * dirToLight) << endl;
+				cout << glm::to_string(l.position) << endl;
+				
+				switch (ip.object->type) {
+				case SPHERE_OBJ:
+					cout << "Sphere" << endl;
+					break;
+				case POLYSET_OBJ:
+					cout << "Polyset" << endl;
+					break;
+				}
+				cout << endl;
+				if (count >= 1001) exit(1);
+			}
+		}
+
+		if (ip.object == NULL ||
+			(l.sceneLight->type != DIRECTIONAL_LIGHT &&
+				glm::distance2(ip.position, l.position) > dist2) ||
+			ip.object->material->ktran > EPSILON) {
+			color += lightContrib(seenColor, normal, inVec, dirToLight, glm::distance(l.position, ip.position), diffuse, specular, shiny);
 		}
 	}
 	return color;
@@ -297,6 +345,8 @@ void jacksRenderScene(SceneIO* scene) {
 		lights.push_back(Light(light));
 	}
 
+	int lastPercent = 0;
+
 	for (int pixY = 0; pixY < IMAGE_HEIGHT; pixY++) {
 		for (int pixX = 0; pixX < IMAGE_WIDTH; pixX++) {
 			glm::vec2 screenSpace(
@@ -309,6 +359,12 @@ void jacksRenderScene(SceneIO* scene) {
 			glm::vec3 pixVec = glm::normalize(screenPoint - cam.pos);
 			glm::vec3 color = tracePixelVec(pixVec, cam.pos, scene);
 			setPixel(pixX, pixY, color);
+
+			float percent = ((float)pixY * IMAGE_WIDTH + pixX) / (IMAGE_WIDTH * IMAGE_HEIGHT);
+			if (percent * 100 > lastPercent + 10) {
+				lastPercent += 10;
+				cout << lastPercent << "% complete" << endl;
+			}
 		}
 	}
 }
