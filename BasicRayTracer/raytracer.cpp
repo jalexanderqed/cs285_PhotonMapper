@@ -10,14 +10,16 @@
 #include "lib\glm\glm.hpp"
 #include "lib\glm\ext.hpp"
 
-const int IMAGE_WIDTH = 400;
-const int IMAGE_HEIGHT = 400;
+const int IMAGE_WIDTH = 1500;
+const int IMAGE_HEIGHT = 1500;
+const float EPSILON = 0.00005f;
 
 using namespace std;
 
 float *image;
 
 SceneIO *scene = NULL;
+LPCTSTR fileName;
 
 static void loadScene(char *name) {
 	/* load the scene into the SceneIO data structure using given parsing code */
@@ -56,7 +58,7 @@ void render(void) {
 
 	/* save out the image */
 	
-	LPCTSTR fileName = _T("test.png");
+	
 	imageObj.Save(fileName);
 	wcout << "Image saved to " << fileName << endl;
 
@@ -73,7 +75,19 @@ int main(int argc, char *argv[]) {
 	Timer total_timer;
 	total_timer.startTimer();
 
-	loadScene("../Scenes/test3.scene");
+	if (argc < 2) {
+		cout << "Usage:\tBasicRayTracer.exe <input file> [<output file>]" << endl;
+		exit(1);
+	}
+
+	if (argc >= 3) {
+		fileName = CA2W(argv[2]);
+	}
+	else {
+		fileName = _T("output.png");
+	}
+
+	loadScene(argv[1]);
 
 	/* write your ray tracer here */
 	render();

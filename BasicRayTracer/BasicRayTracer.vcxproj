@@ -88,12 +88,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Intersections.cpp" />
     <ClCompile Include="raytracer.cpp" />
     <ClCompile Include="scene_io.cpp" />
     <ClCompile Include="Tracer.cpp" />
     <ClCompile Include="util.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Intersections.h" />
+    <ClInclude Include="Light.h" />
+    <ClInclude Include="SceneCamera.h" />
     <ClInclude Include="scene_io.h" />
     <ClInclude Include="Timer.h" />
     <ClInclude Include="Tracer.h" />
