@@ -12,7 +12,7 @@
 
 const int IMAGE_WIDTH = 1500;
 const int IMAGE_HEIGHT = 1500;
-const float EPSILON = 0.00005f;
+const float EPSILON = 0.005f;
 
 using namespace std;
 

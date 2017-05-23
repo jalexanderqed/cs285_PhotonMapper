@@ -15,6 +15,30 @@ const glm::vec3 BACK_COLOR(0);
 
 vector<Light> lights;
 
+MaterialIO getMaterial(const IntersectionPoint& iPoint) {
+	if (iPoint.object->type == POLYSET_OBJ &&
+		iPoint.object->numMaterials > 1 &&
+		((PolySetIO*)(iPoint.object->data))->materialBinding == PER_VERTEX_MATERIAL) {
+		glm::vec3 p1(iPoint.polyIntersect.poly->vert[0].pos[0],
+			iPoint.polyIntersect.poly->vert[0].pos[1],
+			iPoint.polyIntersect.poly->vert[0].pos[2]);
+		glm::vec3 p2(iPoint.polyIntersect.poly->vert[1].pos[0],
+			iPoint.polyIntersect.poly->vert[1].pos[1],
+			iPoint.polyIntersect.poly->vert[1].pos[2]);
+		glm::vec3 p3(iPoint.polyIntersect.poly->vert[2].pos[0],
+			iPoint.polyIntersect.poly->vert[2].pos[1],
+			iPoint.polyIntersect.poly->vert[2].pos[2]);
+		return interpolateMaterials(p1, p2, p3,
+			&iPoint.object->material[iPoint.polyIntersect.poly->vert[0].materialIndex],
+			&iPoint.object->material[iPoint.polyIntersect.poly->vert[1].materialIndex],
+			&iPoint.object->material[iPoint.polyIntersect.poly->vert[2].materialIndex],
+			iPoint.position);
+	}
+	else {
+		return *(iPoint.object->material);
+	}
+}
+
 glm::vec3 lightContrib(const glm::vec3& lightColor,
 	const glm::vec3& normal, const glm::vec3& inDir,
 	const glm::vec3& dirToLight, float distToLight,
@@ -70,19 +94,19 @@ glm::vec3 calcAllLights(const IntersectionPoint& iPoint,
 		dirToLight = glm::normalize(dirToLight);
 
 		IntersectionPoint ip = intersectScene(dirToLight, iPoint.position + EPSILON * dirToLight, scene);
+		MaterialIO ipMaterial;
 		glm::vec3 seenColor = l.color;
 		int count = 0;
 		while (!(ip.object == NULL ||
 			(l.sceneLight->type != DIRECTIONAL_LIGHT &&
 				glm::distance2(ip.position, l.position) > dist2) ||
-			ip.object->material->ktran < EPSILON)) {
-
+			(ipMaterial = getMaterial(ip)).ktran < EPSILON)) {
 			count++;
-			glm::vec3 objColor(ip.object->material->diffColor[0],
-				ip.object->material->diffColor[1],
-				ip.object->material->diffColor[2]);
+			glm::vec3 objColor(ipMaterial.diffColor[0],
+				ipMaterial.diffColor[1],
+				ipMaterial.diffColor[2]);
 			objColor *= 1.0f / max(objColor.r, max(objColor.g, objColor.b));
-			seenColor = seenColor * ip.object->material->ktran * objColor;
+			seenColor = seenColor * ipMaterial.ktran * objColor;
 
 			ip = intersectScene(dirToLight, ip.position + EPSILON * dirToLight, scene);
 		}
@@ -90,17 +114,13 @@ glm::vec3 calcAllLights(const IntersectionPoint& iPoint,
 		if (ip.object == NULL ||
 			(l.sceneLight->type != DIRECTIONAL_LIGHT &&
 				glm::distance2(ip.position, l.position) > dist2) ||
-			ip.object->material->ktran > EPSILON) {
+			ipMaterial.ktran > EPSILON) {
 			color += lightContrib(seenColor, normal, inVec, dirToLight,
 				l.sceneLight->type == DIRECTIONAL_LIGHT ? -1 : glm::distance(l.position, ip.position),
 				diffuse, specular, shiny, interMaterial.ktran);
 		}
 	}
 	return color;
-}
-
-MaterialIO interpolateMaterial(const IntersectionPoint& iPoint) {
-	return *iPoint.object->material;
 }
 
 glm::vec3 shadeIntersect(const IntersectionPoint& iPoint,
@@ -110,22 +130,13 @@ glm::vec3 shadeIntersect(const IntersectionPoint& iPoint,
 	int depth) {
 
 	glm::vec3 outVec = -1 * inVec;
-	MaterialIO interMaterial;
-
-	if (iPoint.object->type == POLYSET_OBJ &&
-		iPoint.object->numMaterials > 1 &&
-		((PolySetIO*)(iPoint.object->data))->materialBinding == PER_VERTEX_MATERIAL) {
-		interMaterial = interpolateMaterial(iPoint);
-	}
-	else {
-		interMaterial = *(iPoint.object->material);
-	}
+	MaterialIO interMaterial = getMaterial(iPoint);	
 
 	glm::vec3 color = calcAllLights(iPoint, interMaterial, inVec, scene);
 	if (depth > 10) return color;
 	depth++;
 
-	glm::vec3 normal = getNormal(iPoint);
+	glm::vec3 normal = glm::normalize(getNormal(iPoint));
 
 	if (interMaterial.ktran > EPSILON) {
 		float cosVal = glm::dot(inVec, normal);
