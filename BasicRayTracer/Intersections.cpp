@@ -10,10 +10,19 @@ glm::vec3 getNormal(IntersectionPoint iPoint) {
 		break;
 	case POLYSET_OBJ:
 		PolygonIO* poly = iPoint.polyIntersect.poly;
-		glm::vec3 vert0(poly->vert[0].pos[0], poly->vert[0].pos[1], poly->vert[0].pos[2]);
-		glm::vec3 vert1(poly->vert[1].pos[0], poly->vert[1].pos[1], poly->vert[1].pos[2]);
-		glm::vec3 vert2(poly->vert[2].pos[0], poly->vert[2].pos[1], poly->vert[2].pos[2]);
-		normal = glm::normalize(glm::cross(vert1 - vert0, vert2 - vert0));
+		glm::vec3 vert0Pos(poly->vert[0].pos[0], poly->vert[0].pos[1], poly->vert[0].pos[2]);
+		glm::vec3 vert1Pos(poly->vert[1].pos[0], poly->vert[1].pos[1], poly->vert[1].pos[2]);
+		glm::vec3 vert2Pos(poly->vert[2].pos[0], poly->vert[2].pos[1], poly->vert[2].pos[2]);
+		switch (((PolySetIO*)iPoint.object->data)->normType) {
+		case PER_FACE_NORMAL:
+			normal = glm::normalize(glm::cross(vert1Pos - vert0Pos, vert2Pos - vert0Pos));
+			break;
+		case PER_VERTEX_NORMAL:
+			glm::vec3 vert0Norm(poly->vert[0].norm[0], poly->vert[0].norm[1], poly->vert[0].norm[2]);
+			glm::vec3 vert1Norm(poly->vert[1].norm[0], poly->vert[1].norm[1], poly->vert[1].norm[2]);
+			glm::vec3 vert2Norm(poly->vert[2].norm[0], poly->vert[2].norm[1], poly->vert[2].norm[2]);
+			break;
+		}
 		break;
 	}
 	return normal;

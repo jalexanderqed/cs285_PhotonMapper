@@ -38,18 +38,19 @@ glm::vec3 lightContrib(const glm::vec3& lightColor,
 }
 
 glm::vec3 calcAllLights(const IntersectionPoint& iPoint,
+	const MaterialIO& interMaterial,
 	const glm::vec3& inVec,
 	SceneIO* scene) {
 
 	glm::vec3 normal = getNormal(iPoint);
-	glm::vec3 diffuse(iPoint.object->material->diffColor[0], iPoint.object->material->diffColor[1], iPoint.object->material->diffColor[2]);
-	glm::vec3 specular(iPoint.object->material->specColor[0], iPoint.object->material->specColor[1], iPoint.object->material->specColor[2]);
-	glm::vec3 ambient(iPoint.object->material->ambColor[0], iPoint.object->material->ambColor[1], iPoint.object->material->ambColor[2]);
-	glm::vec3 emissive(iPoint.object->material->emissColor[0], iPoint.object->material->emissColor[1], iPoint.object->material->emissColor[2]);
-	float shiny = iPoint.object->material->shininess;
-	float trans = iPoint.object->material->shininess;
+	glm::vec3 diffuse(interMaterial.diffColor[0], interMaterial.diffColor[1], interMaterial.diffColor[2]);
+	glm::vec3 specular(interMaterial.specColor[0], interMaterial.specColor[1], interMaterial.specColor[2]);
+	glm::vec3 ambient(interMaterial.ambColor[0], interMaterial.ambColor[1], interMaterial.ambColor[2]);
+	glm::vec3 emissive(interMaterial.emissColor[0], interMaterial.emissColor[1], interMaterial.emissColor[2]);
+	float shiny = interMaterial.shininess;
+	float trans = interMaterial.shininess;
 
-	glm::vec3 color = ambient * diffuse * (1.0f - iPoint.object->material->ktran);
+	glm::vec3 color = ambient * diffuse * (1.0f - interMaterial.ktran);
 
 	for (Light l : lights) {
 		glm::vec3 dirToLight;
@@ -92,31 +93,41 @@ glm::vec3 calcAllLights(const IntersectionPoint& iPoint,
 			ip.object->material->ktran > EPSILON) {
 			color += lightContrib(seenColor, normal, inVec, dirToLight,
 				l.sceneLight->type == DIRECTIONAL_LIGHT ? -1 : glm::distance(l.position, ip.position),
-				diffuse, specular, shiny, iPoint.object->material->ktran);
+				diffuse, specular, shiny, interMaterial.ktran);
 		}
 	}
 	return color;
 }
 
-glm::vec3 reflectRefractRecurse(const IntersectionPoint& iPoint,
+MaterialIO interpolateMaterial(const IntersectionPoint& iPoint) {
+	return *iPoint.object->material;
+}
+
+glm::vec3 shadeIntersect(const IntersectionPoint& iPoint,
 	const glm::vec3& inVec,
 	SceneIO* scene,
 	int inside,
 	int depth) {
 
-	if (iPoint.object->numMaterials > 1) {
-		cerr << "ERROR: More than one material not supported." << endl;
-		return glm::vec3();
+	glm::vec3 outVec = -1 * inVec;
+	MaterialIO interMaterial;
+
+	if (iPoint.object->type == POLYSET_OBJ &&
+		iPoint.object->numMaterials > 1 &&
+		((PolySetIO*)(iPoint.object->data))->materialBinding == PER_VERTEX_MATERIAL) {
+		interMaterial = interpolateMaterial(iPoint);
+	}
+	else {
+		interMaterial = *(iPoint.object->material);
 	}
 
-	glm::vec3 color = calcAllLights(iPoint, inVec, scene);
+	glm::vec3 color = calcAllLights(iPoint, interMaterial, inVec, scene);
 	if (depth > 10) return color;
 	depth++;
 
 	glm::vec3 normal = getNormal(iPoint);
-	glm::vec3 outVec = -1 * inVec;
 
-	if (iPoint.object->material->ktran > EPSILON) {
+	if (interMaterial.ktran > EPSILON) {
 		float cosVal = glm::dot(inVec, normal);
 		float oldIR, newIR;
 		if (cosVal > 0) { // Going out
@@ -145,7 +156,7 @@ glm::vec3 reflectRefractRecurse(const IntersectionPoint& iPoint,
 		}
 
 		glm::vec3 refractDir = oldIR == newIR ? inVec : refract(outVec, normal, oldIR, newIR);
-		if (glm::length2(refractDir) < EPSILON){ // Total internal reflection
+		if (glm::length2(refractDir) < EPSILON) { // Total internal reflection
 			inside++;
 		}
 		else {
@@ -153,23 +164,23 @@ glm::vec3 reflectRefractRecurse(const IntersectionPoint& iPoint,
 			IntersectionPoint refractIntersect = intersectScene(refractDir,
 				iPoint.position + EPSILON * refractDir, scene);
 			if (refractIntersect.object != NULL) {
-				color += iPoint.object->material->ktran * reflectRefractRecurse(refractIntersect, refractDir, scene, inside, depth);
+				color += interMaterial.ktran * shadeIntersect(refractIntersect, refractDir, scene, inside, depth);
 			}
 		}
 	}
-	if (iPoint.object->material->specColor[0] +
-		iPoint.object->material->specColor[1] +
-		iPoint.object->material->specColor[2]
-		> EPSILON){
+	if (interMaterial.specColor[0] +
+		interMaterial.specColor[1] +
+		interMaterial.specColor[2]
+		> EPSILON) {
 
-		glm::vec3 spec(iPoint.object->material->specColor[0],
-		iPoint.object->material->specColor[1],
-		iPoint.object->material->specColor[2]);
+		glm::vec3 spec(interMaterial.specColor[0],
+			interMaterial.specColor[1],
+			interMaterial.specColor[2]);
 		glm::vec3 reflectDir = reflect(outVec, normal);
 		IntersectionPoint reflectIntersect = intersectScene(reflectDir,
 			iPoint.position + EPSILON * reflectDir, scene);
 		if (reflectIntersect.object != NULL) {
-			color += spec * reflectRefractRecurse(reflectIntersect, reflectDir, scene, inside, depth);
+			color += spec * shadeIntersect(reflectIntersect, reflectDir, scene, inside, depth);
 		}
 	}
 	return color;
@@ -179,7 +190,7 @@ glm::vec3 tracePixelVec(const glm::vec3& firstVec, const glm::vec3& camPos, Scen
 	IntersectionPoint iPoint = intersectScene(firstVec, camPos, scene);
 
 	if (iPoint.object != NULL) {
-		return reflectRefractRecurse(iPoint, firstVec, scene, 0, 0);
+		return shadeIntersect(iPoint, firstVec, scene, 0, 0);
 	}
 	else {
 		return BACK_COLOR;
