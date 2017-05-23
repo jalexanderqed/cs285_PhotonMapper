@@ -10,8 +10,8 @@
 #include "lib\glm\glm.hpp"
 #include "lib\glm\ext.hpp"
 
-const int IMAGE_WIDTH = 1500;
-const int IMAGE_HEIGHT = 1500;
+const int IMAGE_WIDTH = 400;
+const int IMAGE_HEIGHT = 400;
 const float EPSILON = 0.00005f;
 
 using namespace std;
