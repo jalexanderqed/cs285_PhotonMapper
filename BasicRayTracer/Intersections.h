@@ -6,33 +6,14 @@
 #include "util.h"
 #include "scene_io.h"
 #include <iostream>
+#include "IntersectionPrimitives.h"
+#include "ObjBound.h"
 
 using namespace std;
 
 const extern float EPSILON;
-
-class PolyIntersectionPoint {
-public:
-	glm::vec3 position;
-	PolygonIO *poly;
-
-	PolyIntersectionPoint();
-
-	PolyIntersectionPoint(const PolyIntersectionPoint& p);
-
-	PolyIntersectionPoint(const glm::vec3& p, PolygonIO* py);
-};
-
-class IntersectionPoint {
-public:
-	glm::vec3 position;
-	ObjIO *object;
-	PolyIntersectionPoint polyIntersect;
-
-	IntersectionPoint();
-
-	IntersectionPoint(const glm::vec3& p, ObjIO *o, const PolyIntersectionPoint& pi);
-};
+extern bool useAcceleration;
+extern list<ObjBound*> boundBoxes;
 
 glm::vec3 getBarycentricWeights(const glm::vec3& p1, const glm::vec3& p2, const glm::vec3& p3,
 	const glm::vec3& point);
@@ -45,13 +26,7 @@ MaterialIO interpolateMaterials(const glm::vec3& p1, const glm::vec3& p2, const 
 	const MaterialIO* material1, const MaterialIO* material2, const MaterialIO* material3, 
 	const glm::vec3& point);
 
-IntersectionPoint intersectSphere(const glm::vec3& vec, const glm::vec3& origin, ObjIO* sphere);
-
-PolyIntersectionPoint intersectPoly(const glm::vec3& vec, const glm::vec3& origin, PolygonIO* poly);
-
-IntersectionPoint intersectPolySet(const glm::vec3& vec, const glm::vec3& origin, ObjIO* shape);
-
-IntersectionPoint intersectScene(const glm::vec3& vec, const glm::vec3& origin, SceneIO* scene);
+IntersectionPoint intersectScene(const glm::vec3& vec, const glm::vec3& origin, const SceneIO* scene);
 
 glm::vec3 getNormal(IntersectionPoint iPoint);
 
