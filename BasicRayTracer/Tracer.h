@@ -10,6 +10,7 @@
 #include <vector>
 #include "lib\glm\glm.hpp"
 #include "lib\glm\ext.hpp"
+#include "SceneStructure.h"
 
 using namespace std;
 

@@ -142,20 +142,6 @@ glm::vec3 shadeIntersect(const IntersectionPoint& iPoint,
 		float cosVal = glm::dot(inVec, normal);
 		float oldIR, newIR;
 		if (cosVal > 0) { // Going out
-#ifdef DEBUG
-			if (inside <= 0) {
-				cerr << "Going out when not inside" << endl;
-				cerr << "Type:" << endl;
-				switch (iPoint.object->type) {
-				case SPHERE_OBJ:
-					cerr << "Sphere" << endl;
-					break;
-				case POLYSET_OBJ:
-					cerr << "Polyset" << endl;
-					break;
-				}
-			}
-#endif // DEBUG
 			inside = max(0, inside - 1);
 			oldIR = 1.5f;
 			newIR = inside == 0 ? 1.0f : 1.5f;

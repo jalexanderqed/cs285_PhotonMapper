@@ -90,14 +90,14 @@ glm::vec3 getNormal(IntersectionPoint iPoint) {
 	switch (iPoint.object->type) {
 	case SPHERE_OBJ:
 		sphereData = (SphereIO*)iPoint.object->data;
-		normal = glm::normalize(iPoint.position - glm::vec3(sphereData->origin[0], sphereData->origin[1], sphereData->origin[2]));
+		normal = iPoint.position - glm::vec3(sphereData->origin[0], sphereData->origin[1], sphereData->origin[2]);
 		break;
 	case POLYSET_OBJ:
 		PolygonIO* poly = iPoint.polyIntersect.poly;
 		glm::vec3 vert0Pos(poly->vert[0].pos[0], poly->vert[0].pos[1], poly->vert[0].pos[2]);
 		glm::vec3 vert1Pos(poly->vert[1].pos[0], poly->vert[1].pos[1], poly->vert[1].pos[2]);
 		glm::vec3 vert2Pos(poly->vert[2].pos[0], poly->vert[2].pos[1], poly->vert[2].pos[2]);
-		if (((PolySetIO*)iPoint.object->data)->normType == PER_VERTEX_NORMAL) {
+		if (((PolySetIO*)(iPoint.object->data))->normType == PER_VERTEX_NORMAL) {
 			glm::vec3 vert0Norm(poly->vert[0].norm[0], poly->vert[0].norm[1], poly->vert[0].norm[2]);
 			glm::vec3 vert1Norm(poly->vert[1].norm[0], poly->vert[1].norm[1], poly->vert[1].norm[2]);
 			glm::vec3 vert2Norm(poly->vert[2].norm[0], poly->vert[2].norm[1], poly->vert[2].norm[2]);
@@ -106,11 +106,11 @@ glm::vec3 getNormal(IntersectionPoint iPoint) {
 				iPoint.position);
 		}
 		else {
-			normal = glm::normalize(glm::cross(vert1Pos - vert0Pos, vert2Pos - vert0Pos));
+			normal = glm::cross(vert1Pos - vert0Pos, vert2Pos - vert0Pos);
 		}
 		break;
 	}
-	return normal;
+	return glm::normalize(normal);
 }
 
 PolyIntersectionPoint::PolyIntersectionPoint() :
@@ -128,27 +128,7 @@ IntersectionPoint::IntersectionPoint() :
 IntersectionPoint::IntersectionPoint(const glm::vec3& p, ObjIO *o, const PolyIntersectionPoint& pi) :
 	position{ p }, object{ o }, polyIntersect{ pi } {}
 
-IntersectionPoint intersectSphere(const glm::vec3& vec, const glm::vec3& origin, ObjIO* sphere) {
-	IntersectionPoint point;
 
-	SphereIO* objData = (SphereIO*)sphere->data;
-
-	glm::vec3 center(objData->origin[0], objData->origin[1], objData->origin[2]);
-	glm::vec3 oToC = center - origin;
-	float rayProj = glm::dot(vec, oToC);
-	if (rayProj < 0) return point;
-
-	float distFromCenter = sqrt(glm::length2(oToC) - rayProj * rayProj);
-	if (distFromCenter > objData->radius) return point;
-	float halfChordLength = sqrt(objData->radius * objData->radius - distFromCenter * distFromCenter);
-	float distToIntersect;
-	if (glm::length(oToC) > objData->radius) distToIntersect = rayProj - halfChordLength;
-	else distToIntersect = rayProj + halfChordLength;
-
-	point = { (distToIntersect * vec) + origin, sphere, PolyIntersectionPoint() };
-
-	return point;
-}
 
 inline void cross(const glm::vec3& v1, float* v2, float* res) {
 	res[0] = v1[1] * v2[2] - v1[2] * v2[1];
@@ -172,6 +152,28 @@ inline float dot(const glm::vec3& v1, float* v2) {
 	return v1[0] * v2[0] +
 		v1[1] * v2[1] +
 		v1[2] * v2[2];
+}
+
+IntersectionPoint intersectSphere(const glm::vec3& vec, const glm::vec3& origin, ObjIO* sphere) {
+	IntersectionPoint point;
+
+	SphereIO* objData = (SphereIO*)sphere->data;
+
+	glm::vec3 center(objData->origin[0], objData->origin[1], objData->origin[2]);
+	glm::vec3 oToC = center - origin;
+	float rayProj = glm::dot(vec, oToC);
+	if (rayProj < 0) return point;
+
+	float distFromCenter = sqrt(glm::length2(oToC) - rayProj * rayProj);
+	if (distFromCenter > objData->radius) return point;
+	float halfChordLength = sqrt(objData->radius * objData->radius - distFromCenter * distFromCenter);
+	float distToIntersect;
+	if (glm::length(oToC) > objData->radius) distToIntersect = rayProj - halfChordLength;
+	else distToIntersect = rayProj + halfChordLength;
+
+	point = { (distToIntersect * vec) + origin, sphere, PolyIntersectionPoint() };
+
+	return point;
 }
 
 PolyIntersectionPoint intersectPoly(const glm::vec3& vec, const glm::vec3& origin, PolygonIO* poly) {

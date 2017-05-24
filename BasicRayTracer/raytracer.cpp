@@ -9,10 +9,11 @@
 #include "Tracer.h"
 #include "lib\glm\glm.hpp"
 #include "lib\glm\ext.hpp"
+#include "SceneStructure.h"
 
 const int IMAGE_WIDTH = 400;
 const int IMAGE_HEIGHT = 400;
-const float EPSILON = 0.00005f;
+const float EPSILON = 0.00001f;
 
 using namespace std;
 
@@ -69,7 +70,11 @@ void render(void) {
 	return;
 }
 
-
+inline void cross(const glm::vec3& v1, float* v2, float* res) {
+	res[0] = v1[1] * v2[2] - v1[2] * v2[1];
+	res[1] = v1[2] * v2[0] - v1[0] * v2[2];
+	res[2] = v1[0] * v2[1] - v1[1] * v2[0];
+}
 
 int main(int argc, char *argv[]) {
 	Timer total_timer;
@@ -86,17 +91,17 @@ int main(int argc, char *argv[]) {
 	else {
 		fileName = _T("output.png");
 	}
-
+	
 	loadScene(argv[1]);
 
-	/* write your ray tracer here */
+	BoundingBox box = boundScene(scene);
+
 	render();
 
-	/* cleanup */
 	if (scene != NULL) {
 		deleteScene(scene);
 	}
-
+	
 	total_timer.stopTimer();
 	fprintf(stderr, "Total time: %.5lf secs\n\n", total_timer.getTime());
 	
