@@ -100,7 +100,7 @@ glm::vec3 calcAllLights(const IntersectionPoint& iPoint,
 		while (!(ip.object == NULL ||
 			(l.sceneLight->type != DIRECTIONAL_LIGHT &&
 				glm::distance2(ip.position, l.position) > dist2) ||
-			(ipMaterial = getMaterial(ip)).ktran < EPSILON)) {
+				(ipMaterial = getMaterial(ip)).ktran < EPSILON)) {
 			count++;
 			glm::vec3 objColor(ipMaterial.diffColor[0],
 				ipMaterial.diffColor[1],
@@ -130,7 +130,7 @@ glm::vec3 shadeIntersect(const IntersectionPoint& iPoint,
 	int depth) {
 
 	glm::vec3 outVec = -1 * inVec;
-	MaterialIO interMaterial = getMaterial(iPoint);	
+	MaterialIO interMaterial = getMaterial(iPoint);
 
 	glm::vec3 color = calcAllLights(iPoint, interMaterial, inVec, scene);
 	if (depth > 10) return color;

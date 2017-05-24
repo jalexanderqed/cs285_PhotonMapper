@@ -18,6 +18,8 @@ extern const int IMAGE_WIDTH;
 extern const int IMAGE_HEIGHT;
 const extern float EPSILON;
 
+extern list<ObjBound*> boundBoxes;
+
 void jacksRenderScene(SceneIO* scene);
 
 #endif // !TRACER_H

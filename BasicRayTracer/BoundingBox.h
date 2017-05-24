@@ -1,10 +1,11 @@
 #ifndef BOUNDING_BOX_H
 #define BOUNDING_BOX_H
 
-#include "util.h"
+#include <algorithm>
 #include "lib\glm\glm.hpp"
 #include "lib\glm\ext.hpp"
 #include "scene_io.h"
+#include "IntersectionPrimitives.h"
 
 using namespace std;
 
@@ -13,14 +14,15 @@ public:
 	glm::vec3 vMax;
 	glm::vec3 vMin;
 
-	BoundingBox() : vMin{ glm::vec3(INFINITY) },
-		vMax{ glm::vec3(-1 * INFINITY) } { }
+	BoundingBox();
 
 	BoundingBox(const PolygonIO* poly);
 
 	BoundingBox(const SphereIO* sphere);
 
 	void apply(const BoundingBox& box);
+
+	bool intersect(const glm::vec3& vec, const glm::vec3& origin, glm::vec3& res);
 };
 
 BoundingBox boundScene(SceneIO* scene);

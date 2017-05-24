@@ -10,6 +10,8 @@
 #include "lib\glm\glm.hpp"
 #include "lib\glm\ext.hpp"
 #include "SceneStructure.h"
+#include <list>
+#include "PolyBound.h"
 
 const int IMAGE_WIDTH = 400;
 const int IMAGE_HEIGHT = 400;
@@ -20,7 +22,9 @@ using namespace std;
 float *image;
 
 SceneIO *scene = NULL;
+list<ObjBound*> boundBoxes;
 LPCTSTR fileName;
+bool useAcceleration = true;
 
 static void loadScene(char *name) {
 	/* load the scene into the SceneIO data structure using given parsing code */
@@ -28,7 +32,7 @@ static void loadScene(char *name) {
 
 	/* hint: use the Visual Studio debugger ("watch" feature) to probe the
 	   scene data structure and learn more about it for each of the given scenes */
-
+	jacksBuildBounds(scene);
 
 	/* write any code to transfer from the scene data structure to your own here */
 	/* */
@@ -57,13 +61,9 @@ void render(void) {
 		}
 	}
 
-	/* save out the image */
-	
-	
 	imageObj.Save(fileName);
 	wcout << "Image saved to " << fileName << endl;
 
-	/* cleanup */
 	imageObj.Destroy();
 	delete[] image;
 
@@ -77,6 +77,36 @@ inline void cross(const glm::vec3& v1, float* v2, float* res) {
 }
 
 int main(int argc, char *argv[]) {
+	/*
+	BoundingBox box;
+	PolygonIO poly;
+	poly.vert = new VertexIO[3];
+	poly.vert[0].pos[0] = 1;
+	poly.vert[0].pos[1] = 0;
+	poly.vert[0].pos[2] = 0;
+
+	poly.vert[1].pos[0] = 0;
+	poly.vert[1].pos[1] = 1;
+	poly.vert[1].pos[2] = 0;
+
+	poly.vert[2].pos[0] = 0;
+	poly.vert[2].pos[1] = 0;
+	poly.vert[2].pos[2] = 1;
+
+	box.apply(BoundingBox(&poly));
+
+	cout << glm::to_string(box.vMin) << endl;
+	cout << glm::to_string(box.vMax) << endl;
+
+	glm::vec3 res;
+	box.intersect(
+		glm::vec3(0.5f, 0.5f, 0.5f),
+		-1 * glm::vec3(-1, 0.5f, 0.5f),
+		res);
+	cout << "Res: " << glm::to_string(res) << endl;
+
+	if (true) return 0;*/
+
 	Timer total_timer;
 	total_timer.startTimer();
 
@@ -94,13 +124,13 @@ int main(int argc, char *argv[]) {
 	
 	loadScene(argv[1]);
 
-	BoundingBox box = boundScene(scene);
-
 	render();
 
 	if (scene != NULL) {
 		deleteScene(scene);
 	}
+
+	jacksCleanupBounds();
 	
 	total_timer.stopTimer();
 	fprintf(stderr, "Total time: %.5lf secs\n\n", total_timer.getTime());

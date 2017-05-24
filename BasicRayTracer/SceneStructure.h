@@ -7,7 +7,13 @@
 #include "scene_io.h"
 #include "BoundingBox.h"
 #include <iostream>
+#include "PolyBound.h"
+#include "ObjBound.h"
 
+extern list<ObjBound*> boundBoxes;
 
+void jacksBuildBounds(SceneIO* scene);
+
+void jacksCleanupBounds();
 
 #endif // !SCENE_STRUCTURE_H
