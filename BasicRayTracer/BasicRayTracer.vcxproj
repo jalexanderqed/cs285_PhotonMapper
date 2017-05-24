@@ -88,16 +88,26 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BoundingBox.cpp" />
+    <ClCompile Include="IntersectionPrimitives.cpp" />
     <ClCompile Include="Intersections.cpp" />
+    <ClCompile Include="ObjBound.cpp" />
+    <ClCompile Include="PolyBound.cpp" />
     <ClCompile Include="raytracer.cpp" />
+    <ClCompile Include="SceneStructure.cpp" />
     <ClCompile Include="scene_io.cpp" />
     <ClCompile Include="Tracer.cpp" />
     <ClCompile Include="util.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BoundingBox.h" />
+    <ClInclude Include="IntersectionPrimitives.h" />
     <ClInclude Include="Intersections.h" />
     <ClInclude Include="Light.h" />
+    <ClInclude Include="ObjBound.h" />
+    <ClInclude Include="PolyBound.h" />
     <ClInclude Include="SceneCamera.h" />
+    <ClInclude Include="SceneStructure.h" />
     <ClInclude Include="scene_io.h" />
     <ClInclude Include="Timer.h" />
     <ClInclude Include="Tracer.h" />

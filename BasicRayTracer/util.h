@@ -8,7 +8,6 @@
 #include "scene_io.h"
 #include "lib\glm\glm.hpp"
 #include "lib\glm\ext.hpp"
-#include "Intersections.h"
 
 const extern float EPSILON;
 
