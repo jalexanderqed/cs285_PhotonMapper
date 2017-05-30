@@ -11,7 +11,7 @@
 
 using namespace std;
 
-const extern float EPSILON;
+extern float EPSILON;
 extern bool useAcceleration;
 extern list<ObjBound*> boundBoxes;
 

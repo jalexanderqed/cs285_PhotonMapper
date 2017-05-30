@@ -9,7 +9,7 @@
 #include "lib\glm\glm.hpp"
 #include "lib\glm\ext.hpp"
 
-const extern float EPSILON;
+extern float EPSILON;
 
 using namespace std;
 

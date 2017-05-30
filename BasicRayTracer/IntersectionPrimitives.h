@@ -5,7 +5,7 @@
 #include "lib\glm\ext.hpp"
 #include "scene_io.h"
 
-const extern float EPSILON;
+extern float EPSILON;
 
 class PolyIntersectionPoint {
 public:
