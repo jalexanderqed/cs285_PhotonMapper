@@ -121,10 +121,10 @@ IntersectionPoint intersectScene(const glm::vec3& vec, const glm::vec3& origin, 
 			IntersectionPoint currPoint;
 			if (bound->mightIntersect(vec, origin, inter)) {
 				currPoint = bound->intersect(vec, origin);
-			}
-			if (currPoint.object != NULL && (finalPoint.object == NULL ||
-				glm::distance2(currPoint.position, origin) < glm::distance2(finalPoint.position, origin))) {
-				finalPoint = currPoint;
+				if (currPoint.object != NULL && (finalPoint.object == NULL ||
+					glm::distance2(currPoint.position, origin) < glm::distance2(finalPoint.position, origin))) {
+					finalPoint = currPoint;
+				}
 			}
 		}
 	}

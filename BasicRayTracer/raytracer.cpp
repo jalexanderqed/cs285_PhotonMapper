@@ -13,8 +13,8 @@
 #include <list>
 #include "PolyBound.h"
 
-const int IMAGE_WIDTH = 400;
-const int IMAGE_HEIGHT = 400;
+const int IMAGE_WIDTH = 1500;
+const int IMAGE_HEIGHT = 1500;
 const float EPSILON = 0.00001f;
 
 using namespace std;

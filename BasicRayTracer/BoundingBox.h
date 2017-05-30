@@ -23,6 +23,8 @@ public:
 	void apply(const BoundingBox& box);
 
 	bool intersect(const glm::vec3& vec, const glm::vec3& origin, glm::vec3& res);
+
+	bool inside(glm::vec3 point);
 };
 
 BoundingBox boundScene(SceneIO* scene);
