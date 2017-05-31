@@ -30,6 +30,7 @@ bool useAcceleration = true;
 static void loadScene(char *name) {
 	/* load the scene into the SceneIO data structure using given parsing code */
 	scene = readScene(name);
+	if (scene == NULL) exit(1);
 
 	// Calculates a custom epsilon value based on size of the scene
 	BoundingBox sceneBox = boundScene(scene);
@@ -42,7 +43,8 @@ static void loadScene(char *name) {
 	float largeBound = max(abs(posBound), max(abs(negBound), diffBound));
 
 	// EPS_FACTOR was determined with testing of different epsilon values on scenes
-	EPSILON = largeBound / EPS_FACTOR;
+	EPSILON = min(largeBound / EPS_FACTOR, 0.0001f);
+	cout << "New epsilon: " << EPSILON << endl;
 
 	jacksBuildBounds(scene);
 
