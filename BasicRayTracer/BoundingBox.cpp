@@ -67,6 +67,15 @@ bool BoundingBox::intersect(const glm::vec3& vec, const glm::vec3& origin, glm::
 	return true;
 }
 
+bool BoundingBox::inside(glm::vec3 point) {
+	return point.x < vMax.x &&
+		point.x > vMin.x &&
+		point.y < vMax.y &&
+		point.y > vMin.y &&
+		point.z < vMax.z &&
+		point.z > vMin.z;
+}
+
 BoundingBox boundPolySet(const PolySetIO* polySet) {
 	BoundingBox res;
 	PolygonIO* poly = polySet->poly;

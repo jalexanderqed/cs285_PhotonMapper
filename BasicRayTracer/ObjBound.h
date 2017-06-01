@@ -9,9 +9,8 @@
 
 class ObjBound {
 public:
-	BoundingBox boundBox;
-	list<const PolygonIO*> polySet;
-	list<PolyBound*> children;
+	BoundingBox* boundBox;
+	PolyBound* myPolyBound;
 	const ObjIO* obj;
 
 	~ObjBound();
@@ -19,6 +18,8 @@ public:
 	ObjBound(const ObjIO* o);
 
 	bool mightIntersect(const glm::vec3& vec, const glm::vec3& origin, glm::vec3& res);
+
+	void split();
 
 	IntersectionPoint intersect(const glm::vec3& vec, const glm::vec3& origin);
 };
