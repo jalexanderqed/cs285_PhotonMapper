@@ -12,6 +12,7 @@ public:
 	glm::vec3 right;
 	glm::vec3 forward;
 	glm::vec3 pos;
+	glm::vec3 lens;
 	glm::vec3 screenPos;
 	glm::vec3 screenVert;
 	glm::vec3 screenHoriz;
@@ -25,6 +26,7 @@ public:
 		up = glm::normalize(glm::cross(right, forward));
 		pos = glm::vec3(camera->position[0], camera->position[1], camera->position[2]);
 		screenPos = pos + CAMERA_C * forward;
+		lens = screenPos + forward;
 		vertFov = camera->verticalFOV;
 		horizFov = (((float)IMAGE_WIDTH) / IMAGE_HEIGHT) * vertFov;
 		screenVert = CAMERA_C * tan(vertFov / 2) * up;

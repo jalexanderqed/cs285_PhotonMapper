@@ -15,8 +15,12 @@
 
 const int IMAGE_WIDTH = 400;
 const int IMAGE_HEIGHT = 400;
+const int SAMPLES_PER_PIXEL = 2;
+
 float EPSILON = 0.00005f;
 const float EPS_FACTOR = 67000;
+float lensSide = 2.0f;
+float focalPlaneDist;
 
 using namespace std;
 
@@ -44,7 +48,19 @@ static void loadScene(char *name) {
 
 	// EPS_FACTOR was determined with testing of different epsilon values on scenes
 	EPSILON = min(largeBound / EPS_FACTOR, 0.0001f);
-	cout << "New epsilon: " << EPSILON << endl;
+	focalPlaneDist = diffBound;
+
+	if (SAMPLES_PER_PIXEL != 1) {
+		int len = strlen(name);
+		switch (name[len - 7]) {
+		case '2':
+
+			break;
+		case '5':
+			focalPlaneDist = 10;
+			break;
+		}
+	}
 
 	jacksBuildBounds(scene);
 
@@ -92,6 +108,7 @@ inline void cross(const glm::vec3& v1, float* v2, float* res) {
 
 int main(int argc, char *argv[]) {
 
+	srand(time(NULL));
 	Timer total_timer;
 	total_timer.startTimer();
 

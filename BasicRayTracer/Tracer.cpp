@@ -196,25 +196,55 @@ glm::vec3 tracePixelVec(const glm::vec3& firstVec, const glm::vec3& camPos, Scen
 
 void jacksRenderScene(SceneIO* scene) {
 	SceneCamera cam(scene->camera);
+	cout << glm::distance(cam.screenPos, glm::vec3(((PolySetIO*)scene->objects->data)->poly[500].vert->pos[0], ((PolySetIO*)scene->objects->data)->poly[500].vert->pos[1], ((PolySetIO*)scene->objects->data)->poly[500].vert->pos[2])) << endl;
 
 	for (LightIO *light = scene->lights; light != NULL; light = light->next) {
 		lights.push_back(Light(light));
 	}
 
 	int lastPercent = 0;
+	float invSampPix = 1.0f / SAMPLES_PER_PIXEL;
+	glm::vec3 focalPlane = cam.screenPos + focalPlaneDist * cam.forward;
 
 	for (int pixY = 0; pixY < IMAGE_HEIGHT; pixY++) {
 		for (int pixX = 0; pixX < IMAGE_WIDTH; pixX++) {
-			glm::vec2 screenSpace(
-				(pixX + (1.0f / 2)) / IMAGE_WIDTH,
-				(pixY + (1.0f / 2)) / IMAGE_HEIGHT
-			);
-			glm::vec3 screenPoint = cam.screenPos +
-				(2 * screenSpace.x - 1) * cam.screenHoriz +
-				(2 * screenSpace.y - 1) * cam.screenVert;
-			glm::vec3 pixVec = glm::normalize(screenPoint - cam.pos);
-			glm::vec3 color = tracePixelVec(pixVec, cam.pos, scene);
-			//if (color.r > 1 && color.g > 1 && color.b > 1) color = glm::vec3(0.7, 0, 0.7);
+			glm::vec3 color(0);
+			for (int subY = 0; subY < SAMPLES_PER_PIXEL; subY++) {
+				for (int subX = 0; subX < SAMPLES_PER_PIXEL; subX++) {
+					glm::vec2 screenSpace;
+					glm::vec3 pixVec;
+
+					if (SAMPLES_PER_PIXEL == 1) {
+						screenSpace.x = (pixX + 0.5f) / IMAGE_WIDTH;
+						screenSpace.y = (pixY + 0.5f) / IMAGE_HEIGHT;
+
+						glm::vec3 screenPoint = cam.screenPos +
+							(2 * screenSpace.x - 1) * cam.screenHoriz +
+							(2 * screenSpace.y - 1) * cam.screenVert;
+
+						pixVec = glm::normalize(screenPoint - cam.pos);
+					}
+					else {
+						screenSpace.x = (pixX + ((float)subX / SAMPLES_PER_PIXEL) + glm::linearRand(0.0f, invSampPix)) / IMAGE_WIDTH;
+						screenSpace.y = (pixY + ((float)subY / SAMPLES_PER_PIXEL) + glm::linearRand(0.0f, invSampPix)) / IMAGE_HEIGHT;
+
+						glm::vec3 screenPoint = cam.screenPos -
+							(2 * screenSpace.x - 1) * cam.screenHoriz -
+							(2 * screenSpace.y - 1) * cam.screenVert;
+
+						glm::vec3 calcRay = glm::normalize(cam.lens - screenPoint);
+						float d = glm::dot(focalPlane - screenPoint, cam.forward) / glm::dot(calcRay, cam.forward);
+						glm::vec3 focalPlanePoint = screenPoint + calcRay * d;
+						glm::vec3 lensPoint = cam.lens +
+							cam.screenHoriz * glm::linearRand(-lensSide, lensSide) +
+							cam.screenVert * glm::linearRand(-lensSide, lensSide);
+						pixVec = glm::normalize(focalPlanePoint - lensPoint);
+					}
+
+					color = color + tracePixelVec(pixVec, cam.pos, scene) /
+						((float)SAMPLES_PER_PIXEL * SAMPLES_PER_PIXEL);
+				}
+			}
 			setPixel(pixX, pixY, color);
 
 			float percent = ((float)pixY * IMAGE_WIDTH + pixX) / (IMAGE_WIDTH * IMAGE_HEIGHT);

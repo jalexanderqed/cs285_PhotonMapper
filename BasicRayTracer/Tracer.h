@@ -16,7 +16,10 @@ using namespace std;
 
 extern const int IMAGE_WIDTH;
 extern const int IMAGE_HEIGHT;
+extern const int SAMPLES_PER_PIXEL;
 extern float EPSILON;
+extern float lensSide;
+extern float focalPlaneDist;
 
 extern list<ObjBound*> boundBoxes;
 
