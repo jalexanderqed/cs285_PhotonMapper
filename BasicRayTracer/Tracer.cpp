@@ -15,7 +15,76 @@ const glm::vec3 BACK_COLOR(0);
 
 vector<Light> lights;
 
+MaterialIO getComplexMaterial(const IntersectionPoint& iPoint) {
+	if (iPoint.object->type == SPHERE_OBJ) {
+
+		float u, v;
+		calcUVSphere(iPoint, u, v);
+
+		v = 1 - v;
+		if (v >= 1) v = 0.999f;
+
+		if (sphereMap.count(iPoint.object) > 0) {
+			float sphereInd = sphereMap.at(iPoint.object);
+			float rotate = sphereInd / sphereMap.size();
+			if (u >= 1.0f - rotate) u += -1 + rotate;
+			else u += rotate;
+		}
+
+		COLORREF color = texture1.GetPixel((int)(u * texture1.GetWidth()), (int)(v * texture1.GetHeight()));
+		if (color == CLR_INVALID) {
+			cerr << "Could not load color value at " << 
+				(int)(u * texture1.GetWidth()) << ", " <<
+				(int)(v * texture1.GetHeight()) << endl;
+			cerr << "u: " << u << endl;
+			cerr << "v: " << v << endl;
+			exit(1);
+		}
+
+		glm::vec3 vecColor(GetRValue(color) / 255.0f, GetGValue(color) / 255.0f, GetBValue(color) / 255.0f);
+		MaterialIO mat = dupMaterial(iPoint.object->material);
+		float diffColor = (glm::normalize(vecColor).b > 0.5f) ? 0.0f : 1.0f;
+		if (sphereMap.count(iPoint.object) > 0) {
+			switch (sphereMap.at(iPoint.object)) {
+			case 0:
+			case 1:
+				mat.shininess = (diffColor + 0.25f) / 2;
+				mat.diffColor[0] = mat.diffColor[1] = mat.diffColor[2] = diffColor;
+				mat.specColor[0] = mat.specColor[1] = mat.specColor[2] = (diffColor + 0.25f) / 2;
+				break;
+			case 3:
+				mat.ktran = (diffColor + 0.8f) / 2;
+			case 2:
+			case 4:
+				mat.diffColor[0] = vecColor.r;
+				mat.diffColor[1] = vecColor.g;
+				mat.diffColor[2] = vecColor.b;
+				break;
+			default:
+
+				break;
+			}
+		}
+
+		return mat;
+	}
+	else {
+		float u, v;
+		calcUVPoly(iPoint.polyIntersect, u, v);
+
+		float color = (u + v) / 4;
+
+		MaterialIO mat = dupMaterial(iPoint.object->material);
+		mat.diffColor[0] = mat.diffColor[1] = mat.diffColor[2] = color;
+		return mat;
+	}
+}
+
 MaterialIO getMaterial(const IntersectionPoint& iPoint) {
+	if (complexColorShaders) {
+		return getComplexMaterial(iPoint);
+	}
+
 	if (iPoint.object->type == POLYSET_OBJ &&
 		iPoint.object->numMaterials > 1 &&
 		((PolySetIO*)(iPoint.object->data))->materialBinding == PER_VERTEX_MATERIAL) {
@@ -194,25 +263,24 @@ glm::vec3 tracePixelVec(const glm::vec3& firstVec, const glm::vec3& camPos, Scen
 	}
 }
 
-void jacksRenderScene(SceneIO* scene) {
+DWORD WINAPI renderLoop(void* params) {
+	ThreadData *data = (ThreadData*)params;
+	SceneIO* scene = data->scene;
 	SceneCamera cam(scene->camera);
-	cout << glm::distance(cam.screenPos, glm::vec3(((PolySetIO*)scene->objects->data)->poly[500].vert->pos[0], ((PolySetIO*)scene->objects->data)->poly[500].vert->pos[1], ((PolySetIO*)scene->objects->data)->poly[500].vert->pos[2])) << endl;
 
-	for (LightIO *light = scene->lights; light != NULL; light = light->next) {
-		lights.push_back(Light(light));
-	}
+	thread_local default_random_engine generator(data->threadNum + time(NULL));
+	uniform_real_distribution<float> randomGen(0.0f, 1.0f);
 
 	int lastPercent = 0;
 	float invSampPix = 1.0f / SAMPLES_PER_PIXEL;
-	glm::vec3 focalPlane = cam.screenPos + focalPlaneDist * cam.forward;
+	glm::vec3 focalPlane = cam.screenPos + cam.focalDistance * cam.forward;
 
-	for (int pixY = 0; pixY < IMAGE_HEIGHT; pixY++) {
+	for (int pixY = data->threadNum; pixY < IMAGE_HEIGHT; pixY += numThreads) {
 		for (int pixX = 0; pixX < IMAGE_WIDTH; pixX++) {
 			glm::vec3 color(0);
 			for (int subY = 0; subY < SAMPLES_PER_PIXEL; subY++) {
 				for (int subX = 0; subX < SAMPLES_PER_PIXEL; subX++) {
 					glm::vec2 screenSpace;
-					glm::vec3 pixVec;
 
 					if (SAMPLES_PER_PIXEL == 1) {
 						screenSpace.x = (pixX + 0.5f) / IMAGE_WIDTH;
@@ -222,11 +290,14 @@ void jacksRenderScene(SceneIO* scene) {
 							(2 * screenSpace.x - 1) * cam.screenHoriz +
 							(2 * screenSpace.y - 1) * cam.screenVert;
 
-						pixVec = glm::normalize(screenPoint - cam.pos);
+						glm::vec3 pixVec = glm::normalize(screenPoint - cam.pos);
+
+						color = color + tracePixelVec(pixVec, cam.pos, scene) /
+							((float)SAMPLES_PER_PIXEL * SAMPLES_PER_PIXEL);
 					}
 					else {
-						screenSpace.x = (pixX + ((float)subX / SAMPLES_PER_PIXEL) + glm::linearRand(0.0f, invSampPix)) / IMAGE_WIDTH;
-						screenSpace.y = (pixY + ((float)subY / SAMPLES_PER_PIXEL) + glm::linearRand(0.0f, invSampPix)) / IMAGE_HEIGHT;
+						screenSpace.x = (pixX + ((float)subX / SAMPLES_PER_PIXEL) + randomGen(generator) * invSampPix) / IMAGE_WIDTH;
+						screenSpace.y = (pixY + ((float)subY / SAMPLES_PER_PIXEL) + randomGen(generator) * invSampPix) / IMAGE_HEIGHT;
 
 						glm::vec3 screenPoint = cam.screenPos -
 							(2 * screenSpace.x - 1) * cam.screenHoriz -
@@ -235,23 +306,67 @@ void jacksRenderScene(SceneIO* scene) {
 						glm::vec3 calcRay = glm::normalize(cam.lens - screenPoint);
 						float d = glm::dot(focalPlane - screenPoint, cam.forward) / glm::dot(calcRay, cam.forward);
 						glm::vec3 focalPlanePoint = screenPoint + calcRay * d;
-						glm::vec3 lensPoint = cam.lens +
-							cam.screenHoriz * glm::linearRand(-lensSide, lensSide) +
-							cam.screenVert * glm::linearRand(-lensSide, lensSide);
-						pixVec = glm::normalize(focalPlanePoint - lensPoint);
-					}
 
-					color = color + tracePixelVec(pixVec, cam.pos, scene) /
-						((float)SAMPLES_PER_PIXEL * SAMPLES_PER_PIXEL);
+						glm::vec3 lensPoint = cam.lens +
+							cam.screenHoriz * (randomGen(generator) * 2 * lensSide - lensSide) +
+							cam.screenVert * (randomGen(generator) * 2 * lensSide - lensSide);
+						glm::vec3 pixVec = glm::normalize(focalPlanePoint - lensPoint);
+
+						color = color + tracePixelVec(pixVec, lensPoint, scene) / ((float)SAMPLES_PER_PIXEL * SAMPLES_PER_PIXEL);
+					}
 				}
 			}
 			setPixel(pixX, pixY, color);
 
-			float percent = ((float)pixY * IMAGE_WIDTH + pixX) / (IMAGE_WIDTH * IMAGE_HEIGHT);
-			if (percent * 100 > lastPercent + 10) {
-				lastPercent += 10;
-				cerr << lastPercent << "% complete" << endl;
+			if (numThreads == 1) {
+				float percent = ((float)pixY * IMAGE_WIDTH + pixX) / (IMAGE_WIDTH * IMAGE_HEIGHT);
+				if (percent * 100 > lastPercent + 10) {
+					lastPercent += 10;
+					cerr << lastPercent << "% complete" << endl;
+				}
 			}
 		}
+	}
+	return 0;
+}
+
+void jacksRenderScene(SceneIO* scene) {
+	for (LightIO *light = scene->lights; light != NULL; light = light->next) {
+		lights.push_back(Light(light));
+	}
+
+	if (useAcceleration && numThreads > 1) {
+		ThreadData* data = new ThreadData[numThreads];
+		HANDLE* threads = new HANDLE[numThreads];
+		DWORD* threadIds = new DWORD[numThreads];
+
+		for (int i = 0; i < numThreads; i++) {
+			data[i].threadNum = i;
+			data[i].scene = scene;
+
+			threads[i] = CreateThread(
+				NULL,
+				0,
+				renderLoop,
+				&(data[i]),
+				0,
+				&(threadIds[i])
+			);
+		}
+
+		WaitForMultipleObjects(numThreads, threads, true, INFINITE);
+
+		for (int i = 0; i < numThreads; i++) {
+			CloseHandle(threads[i]);
+		}
+
+		delete[] data;
+		delete[] threads;
+		delete[] threadIds;
+	}
+	else {
+		numThreads = 1;
+		ThreadData data = { 0, scene };
+		renderLoop(&data);
 	}
 }

@@ -4,7 +4,8 @@
 #include "lib\glm\glm.hpp"
 #include "lib\glm\ext.hpp"
 
-#define CAMERA_C 1.5
+extern float focalLength;
+extern float globalFocalDistance;
 
 class SceneCamera {
 public:
@@ -16,6 +17,7 @@ public:
 	glm::vec3 screenPos;
 	glm::vec3 screenVert;
 	glm::vec3 screenHoriz;
+	float focalDistance;
 	float vertFov;
 	float horizFov;
 
@@ -25,12 +27,13 @@ public:
 		right = glm::normalize(glm::cross(forward, up));
 		up = glm::normalize(glm::cross(right, forward));
 		pos = glm::vec3(camera->position[0], camera->position[1], camera->position[2]);
-		screenPos = pos + CAMERA_C * forward;
-		lens = screenPos + forward;
+		screenPos = pos + focalLength * forward;
+		lens = screenPos + focalLength * forward;
+		focalDistance = globalFocalDistance;
 		vertFov = camera->verticalFOV;
 		horizFov = (((float)IMAGE_WIDTH) / IMAGE_HEIGHT) * vertFov;
-		screenVert = CAMERA_C * tan(vertFov / 2) * up;
-		screenHoriz = CAMERA_C * tan(horizFov / 2) * right;
+		screenVert = focalLength * tan(vertFov / 2) * up;
+		screenHoriz = focalLength * tan(horizFov / 2) * right;
 	}
 };
 

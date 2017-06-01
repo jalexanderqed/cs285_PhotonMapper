@@ -6,6 +6,7 @@
 #include "util.h"
 #include "scene_io.h"
 #include <iostream>
+#include <cmath>
 #include "IntersectionPrimitives.h"
 #include "ObjBound.h"
 
@@ -14,13 +15,9 @@ using namespace std;
 extern float EPSILON;
 extern bool useAcceleration;
 extern list<ObjBound*> boundBoxes;
+extern bool complexIntersectShaders;
 
-glm::vec3 getBarycentricWeights(const glm::vec3& p1, const glm::vec3& p2, const glm::vec3& p3,
-	const glm::vec3& point);
-
-glm::vec3 interpolateVecs(const glm::vec3& p1, const glm::vec3& p2, const glm::vec3& p3, 
-	const glm::vec3& inter1, const glm::vec3& inter2, const glm::vec3& inter3, 
-	const glm::vec3& point);
+MaterialIO dupMaterial(const MaterialIO* material);
 
 MaterialIO interpolateMaterials(const glm::vec3& p1, const glm::vec3& p2, const glm::vec3& p3, 
 	const MaterialIO* material1, const MaterialIO* material2, const MaterialIO* material3, 

@@ -11,16 +11,25 @@
 #include "lib\glm\ext.hpp"
 #include "SceneStructure.h"
 #include <list>
+#include <unordered_map>
 #include "PolyBound.h"
 
-const int IMAGE_WIDTH = 400;
-const int IMAGE_HEIGHT = 400;
-const int SAMPLES_PER_PIXEL = 2;
-
+const int IMAGE_WIDTH = 1500;
+const int IMAGE_HEIGHT = 1500;
 float EPSILON = 0.00005f;
 const float EPS_FACTOR = 67000;
-float lensSide = 2.0f;
-float focalPlaneDist;
+
+int numThreads = 8;
+bool useAcceleration = true;
+bool complexColorShaders = false;
+bool complexIntersectShaders = false;
+
+const int SAMPLES_PER_PIXEL = 1;
+float lensSide = 5.0f;
+float focalLength = 0.01f;
+float globalFocalDistance = 2;
+
+unordered_map<const ObjIO*, int> sphereMap;
 
 using namespace std;
 
@@ -29,7 +38,7 @@ float *image;
 SceneIO *scene = NULL;
 list<ObjBound*> boundBoxes;
 LPCTSTR fileName;
-bool useAcceleration = true;
+CImage texture1;
 
 static void loadScene(char *name) {
 	/* load the scene into the SceneIO data structure using given parsing code */
@@ -48,24 +57,32 @@ static void loadScene(char *name) {
 
 	// EPS_FACTOR was determined with testing of different epsilon values on scenes
 	EPSILON = min(largeBound / EPS_FACTOR, 0.0001f);
-	focalPlaneDist = diffBound;
 
 	if (SAMPLES_PER_PIXEL != 1) {
 		int len = strlen(name);
+		globalFocalDistance = scene->camera->focalDistance;
 		switch (name[len - 7]) {
-		case '2':
-
+		case '3':
+			lensSide = 50;
 			break;
 		case '5':
-			focalPlaneDist = 10;
+			lensSide = 100;
 			break;
 		}
 	}
 
-	jacksBuildBounds(scene);
+	if (complexIntersectShaders && complexColorShaders) {
+		int count = 0;
+		for (ObjIO *object = scene->objects; object != NULL; object = object->next) {
+			if (object->type == SPHERE_OBJ) {
+				sphereMap.insert({ object, count });
+				count++;
+			}
+		}
+	}
 
-	/* write any code to transfer from the scene data structure to your own here */
-	/* */
+	// Builds accelleration structures
+	jacksBuildBounds(scene);
 
 	return;
 }
@@ -92,7 +109,9 @@ void render(void) {
 	}
 
 	imageObj.Save(fileName);
-	wcout << "Image saved to " << fileName << endl;
+
+	// Removed because it interferes with reading times
+	//wcout << "Image saved to " << fileName << endl;
 
 	imageObj.Destroy();
 	delete[] image;
@@ -110,6 +129,8 @@ int main(int argc, char *argv[]) {
 
 	srand(time(NULL));
 	Timer total_timer;
+	Timer accelTimer;
+	Timer renderTimer;
 	total_timer.startTimer();
 
 	if (argc < 2) {
@@ -123,10 +144,24 @@ int main(int argc, char *argv[]) {
 	else {
 		fileName = _T("output.png");
 	}
-	
-	loadScene(argv[1]);
 
+	if (complexColorShaders || complexIntersectShaders) {
+		HRESULT success = texture1.Load(CA2W("earth.jpg"));
+		if (success != S_OK) {
+			cerr << "Error loading texture 1: " << success << endl;
+			exit(1);
+		}
+	}
+	
+	accelTimer.startTimer();
+	loadScene(argv[1]);
+	accelTimer.stopTimer();
+	fprintf(stderr, "Scene-building time: %.5lf secs\n", accelTimer.getTime());
+
+	renderTimer.startTimer();
 	render();
+	renderTimer.stopTimer();
+	fprintf(stderr, "Rendering time: %.5lf secs\n", renderTimer.getTime());
 
 	if (scene != NULL) {
 		deleteScene(scene);

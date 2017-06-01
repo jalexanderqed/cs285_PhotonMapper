@@ -1,31 +1,27 @@
 #include "Intersections.h"
 
-glm::vec3 getBarycentricWeights(const glm::vec3& p1, const glm::vec3& p2, const glm::vec3& p3,
-	const glm::vec3& point) {
-	glm::vec3 res;
-	float sideLengths[3] = { glm::distance(p1, p2),
-		glm::distance(p2, p3),
-		glm::distance(p3, p1) };
-	const glm::vec3* verts[4] = { &p1, &p2, &p3, &p1 };
+MaterialIO dupMaterial(const MaterialIO* material) {
+	MaterialIO resMat;
+	resMat.diffColor[0] = material->diffColor[0];
+	resMat.diffColor[1] = material->diffColor[1];
+	resMat.diffColor[2] = material->diffColor[2];
 
-	for (int i = 0; i < 3; i++) {
-		float a = sideLengths[i];
-		float b = glm::distance(*verts[i], point);
-		float c = glm::distance(*verts[i + 1], point);
-		float p = (a + b + c) / 2.0f;
-		res[i] = max(sqrt(p * (p - a) * (p - b) * (p - c)), 0.0f);
-		//res[i] = sqrt(p * (p - a) * (p - b) * (p - c));
-	}
-	float sum = res.x + res.y + res.z;
-	res *= 1.0f / sum;
-	return res;
-}
+	resMat.ambColor[0] = material->ambColor[0];
+	resMat.ambColor[1] = material->ambColor[1];
+	resMat.ambColor[2] = material->ambColor[2];
 
-glm::vec3 interpolateVecs(const glm::vec3& p1, const glm::vec3& p2, const glm::vec3& p3,
-	const glm::vec3& inter1, const glm::vec3& inter2, const glm::vec3& inter3,
-	const glm::vec3& point) {
-	glm::vec3 weights = getBarycentricWeights(p1, p2, p3, point);
-	return inter3 * weights.x + inter1 * weights.y + inter2 * weights.z;
+	resMat.specColor[0] = material->specColor[0];
+	resMat.specColor[1] = material->specColor[1];
+	resMat.specColor[2] = material->specColor[2];
+
+	resMat.emissColor[0] = material->emissColor[0];
+	resMat.emissColor[1] = material->emissColor[1];
+	resMat.emissColor[2] = material->emissColor[2];
+
+	resMat.shininess = material->shininess;
+	resMat.ktran = material->ktran;
+
+	return resMat;
 }
 
 MaterialIO interpolateMaterials(const glm::vec3& p1, const glm::vec3& p2, const glm::vec3& p3,
