@@ -115,39 +115,7 @@ IntersectionPoint PolyBound::intersect(const glm::vec3& vec, const glm::vec3& or
 			}
 		}
 	}
-	else {
-		/*list<DistPolyPair> intersects;
-		for (PolyBound* p : children) {
-			glm::vec3 interPoint;
-			if (p->mightIntersect(vec, origin, interPoint)) {
-				DistPolyPair pair = { glm::distance2(interPoint, origin), p };
-				if (intersects.size() == 0) {
-					intersects.push_back(pair);
-				}
-				else {
-					auto iter = intersects.begin();
-					while (iter != intersects.end() && pair.dist > iter->dist) {
-						iter++;
-					}
-					intersects.insert(iter, pair);
-				}
-			}
-		}
-		float finalDist = INFINITY;
-		for (DistPolyPair pair : intersects) {
-			if (pair.poly->boundBox.inside(origin) ||
-				pair.dist <= finalDist + EPSILON) {
-				IntersectionPoint currPoint = pair.poly->intersect(vec, origin);
-				float currDist = currPoint.object == NULL ? 0 : glm::distance2(currPoint.position, origin);
-				if (currPoint.object != NULL && (finalPoint.object == NULL ||
-					currDist < finalDist)) {
-					finalPoint = currPoint;
-					finalDist = currDist;
-				}
-			}
-		}*/
-
-		
+	else {		
 		float finalDist = INFINITY;
 		for (PolyBound* p : children) {
 			glm::vec3 interPoint;
@@ -164,4 +132,40 @@ IntersectionPoint PolyBound::intersect(const glm::vec3& vec, const glm::vec3& or
 	}
 
 	return finalPoint;
+}
+
+bool PolyBound::insertPhoton(Photon photon) {
+	if (children.size() == 0) {
+		photons.push_back(photon);
+		return true;
+	}
+	else {
+		for (PolyBound* p : children) {
+			if (p->boundBox.inside(photon.position) &&
+				p->insertPhoton(photon))
+				return true;
+		}
+	}
+	return false;
+}
+
+list<Photon> PolyBound::getPhotons(const glm::vec3& position, float radius) {
+	list<Photon> res;
+	if (children.size() == 0) {
+		float radius2 = radius * radius;
+		for (Photon photon : photons) {
+			if (glm::distance2(photon.position, position) <= radius2) {
+				res.push_back(photon);
+			}
+		}
+	}
+	else {
+		for (PolyBound* p : children) {
+			if (p->boundBox.intersectsBox(position, radius)) {
+				list<Photon> pRes = p->getPhotons(position, radius);
+				if (pRes.size() > 0) res.splice(res.end(), pRes);
+			}
+		}
+	}
+	return res;
 }

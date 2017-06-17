@@ -13,6 +13,8 @@ public:
 	PolyBound* myPolyBound;
 	const ObjIO* obj;
 
+	list<Photon> photons;
+
 	~ObjBound();
 
 	ObjBound(const ObjIO* o);
@@ -22,6 +24,10 @@ public:
 	void split();
 
 	IntersectionPoint intersect(const glm::vec3& vec, const glm::vec3& origin);
+
+	bool insertPhoton(Photon p);
+
+	list<Photon> getPhotons(const glm::vec3& position, float radius);
 };
 
 #endif // !OBJ_BOUND_H

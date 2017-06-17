@@ -5,6 +5,7 @@
 #include "scene_io.h"
 #include <list>
 #include <iostream>
+#include "Photon.h"
 
 using namespace std;
 
@@ -15,6 +16,8 @@ public:
 	list<const PolygonIO*> polySet;
 	list<PolyBound*> children;
 	const ObjIO* parentObject;
+
+	list<Photon> photons;
 
 	~PolyBound();
 
@@ -27,6 +30,10 @@ public:
 	bool mightIntersect(const glm::vec3& vec, const glm::vec3& origin, glm::vec3& res);
 
 	IntersectionPoint intersect(const glm::vec3& vec, const glm::vec3& origin);
+
+	bool insertPhoton(Photon p);
+
+	list<Photon> getPhotons(const glm::vec3& position, float radius);
 };
 
 #endif // !POLY_BOUND_H

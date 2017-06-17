@@ -110,6 +110,7 @@
     <ClInclude Include="Intersections.h" />
     <ClInclude Include="Light.h" />
     <ClInclude Include="ObjBound.h" />
+    <ClInclude Include="Photon.h" />
     <ClInclude Include="PolyBound.h" />
     <ClInclude Include="SceneCamera.h" />
     <ClInclude Include="SceneStructure.h" />

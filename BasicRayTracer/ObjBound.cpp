@@ -42,3 +42,29 @@ IntersectionPoint ObjBound::intersect(const glm::vec3& vec, const glm::vec3& ori
 		return myPolyBound->intersect(vec, origin);
 	}
 }
+
+bool ObjBound::insertPhoton(Photon p) {
+	if (obj->type == SPHERE_OBJ) {
+		photons.push_back(p);
+		return true;
+	}
+	else {
+		return myPolyBound->insertPhoton(p);
+	}
+}
+
+list<Photon> ObjBound::getPhotons(const glm::vec3& position, float radius) {
+	if (obj->type == SPHERE_OBJ) {
+		list<Photon> res;
+		for (Photon photon : photons) {
+			float radius2 = radius * radius;
+			if (glm::distance2(photon.position, position) <= radius2) {
+				res.push_back(photon);
+			}
+		}
+		return res;
+	}
+	else {
+		return myPolyBound->getPhotons(position, radius);
+	}
+}

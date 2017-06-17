@@ -33,7 +33,7 @@ MaterialIO getComplexMaterial(const IntersectionPoint& iPoint) {
 
 		COLORREF color = texture1.GetPixel((int)(u * texture1.GetWidth()), (int)(v * texture1.GetHeight()));
 		if (color == CLR_INVALID) {
-			cerr << "Could not load color value at " << 
+			cerr << "Could not load color value at " <<
 				(int)(u * texture1.GetWidth()) << ", " <<
 				(int)(v * texture1.GetHeight()) << endl;
 			cerr << "u: " << u << endl;
@@ -145,6 +145,7 @@ glm::vec3 calcAllLights(const IntersectionPoint& iPoint,
 
 	glm::vec3 color = ambient * diffuse * (1.0f - interMaterial.ktran);
 
+	/*
 	for (Light l : lights) {
 		glm::vec3 dirToLight;
 		float dist2;
@@ -188,7 +189,17 @@ glm::vec3 calcAllLights(const IntersectionPoint& iPoint,
 				l.sceneLight->type == DIRECTIONAL_LIGHT ? -1 : glm::distance(l.position, ip.position),
 				diffuse, specular, shiny, interMaterial.ktran);
 		}
+	}*/
+
+	list<Photon> photons = getPhotons(iPoint.position, photonSearchRadius);
+	for (Photon p : photons) {
+		float distance = glm::distance(p.position, iPoint.position);
+		glm::vec3 lightInput = dOmega * (max(photonSearchRadius - distance, 0.0001f) / photonSearchRadius) *
+			lights[p.lightInd].color;
+		color += lightContrib(lightInput, normal, inVec, -1 * p.inDir,
+			-1, diffuse, specular, shiny, interMaterial.ktran);
 	}
+
 	return color;
 }
 
@@ -263,6 +274,55 @@ glm::vec3 tracePixelVec(const glm::vec3& firstVec, const glm::vec3& camPos, Scen
 	}
 }
 
+void tracePhotonVec(const glm::vec3& direction, const glm::vec3& origin, SceneIO* scene, int lightInd, int inside) {
+	IntersectionPoint iPoint = intersectScene(direction, origin, scene);
+	glm::vec3 currDirection = direction;
+
+	if (iPoint.object != NULL) {
+		MaterialIO interMaterial = getMaterial(iPoint);
+
+		if (interMaterial.specColor[0] == 1 &&
+			interMaterial.specColor[1] == 1 &&
+			interMaterial.specColor[2] == 1) {
+			// Reflection
+			glm::vec3 normal = glm::normalize(getNormal(iPoint));
+			glm::vec3 reflectDir = reflect(-1 * direction, normal);
+			tracePhotonVec(reflectDir, iPoint.position + EPSILON * reflectDir, scene, lightInd, inside);
+		}
+		else {
+			bool absorbed = glm::linearRand(0.0f, 1.0f) > interMaterial.ktran;
+			if (absorbed) {
+				Photon p = { iPoint.position,  direction, lightInd };
+				insertPhoton(p);
+			}
+			else {
+				glm::vec3 outVec = -1 * direction;
+				glm::vec3 normal = glm::normalize(getNormal(iPoint));
+				float cosVal = glm::dot(direction, normal);
+				float oldIR, newIR;
+				if (cosVal > 0) { // Going out
+					inside = max(0, inside - 1);
+					oldIR = 1.5f;
+					newIR = inside == 0 ? 1.0f : 1.5f;
+				}
+				else { // Going in
+					oldIR = inside == 0 ? 1.0f : 1.5f;
+					inside++;
+					newIR = 1.5f;
+				}
+
+				glm::vec3 refractDir = oldIR == newIR ? direction : refract(outVec, normal, oldIR, newIR);
+				if (glm::length2(refractDir) < EPSILON) {
+					// Total internal reflection
+				}
+				else {
+					tracePhotonVec(refractDir, iPoint.position + EPSILON * refractDir, scene, lightInd, inside);
+				}
+			}
+		}
+	}
+}
+
 DWORD WINAPI renderLoop(void* params) {
 	ThreadData *data = (ThreadData*)params;
 	SceneIO* scene = data->scene;
@@ -330,11 +390,82 @@ DWORD WINAPI renderLoop(void* params) {
 	return 0;
 }
 
-void jacksRenderScene(SceneIO* scene) {
+DWORD WINAPI photonMapLoop(void* params) {
+	ThreadData *data = (ThreadData*)params;
+	SceneIO* scene = data->scene;
+	Light light = lights[data->light];
+
+	srand(data->threadNum + time(NULL));
+
+	uint64_t photonsPerThread = NUM_PHOTONS / numThreads;
+	uint64_t firstPhoton = photonsPerThread * data->threadNum;
+	uint64_t lastPhoton = min(firstPhoton + photonsPerThread, NUM_PHOTONS);
+	if (light.sceneLight->type == POINT_LIGHT) {
+		for (uint64_t photonInd = firstPhoton; photonInd < lastPhoton; photonInd++) {
+			glm::vec3 direction = glm::normalize(glm::sphericalRand(1.0f));
+			tracePhotonVec(direction, light.position, scene, data->light, 0);
+		}
+	}
+	else if (light.sceneLight->type == DIRECTIONAL_LIGHT) {
+		glm::vec3 sceneCenter = (sceneBox.vMax + sceneBox.vMin) / 2.0f;
+		float sceneWidth = glm::distance(sceneBox.vMax, sceneBox.vMin);
+		glm::vec3 origin = sceneCenter + -2 * sceneWidth * light.direction;
+		glm::vec3 side = glm::normalize(glm::cross(glm::vec3(0, 1, 0), light.direction));
+		glm::vec3 up = glm::normalize(glm::cross(side, light.direction));
+		for (uint64_t photonInd = firstPhoton; photonInd < lastPhoton; photonInd++) {
+			glm::vec2 randCirc = glm::circularRand(sceneWidth / 2);
+			glm::vec3 vecOrigin = origin + side * randCirc.x  + up * randCirc.y;
+			tracePhotonVec(light.direction, vecOrigin, scene, data->light, 0);
+		}
+	}
+	return 0;
+}
+
+void jacksTracePhotons(SceneIO* scene) {
 	for (LightIO *light = scene->lights; light != NULL; light = light->next) {
 		lights.push_back(Light(light));
 	}
 
+	for (int lightInd = 0; lightInd < lights.size(); lightInd++) {
+		if (useAcceleration && numThreads > 1) {
+			ThreadData* data = new ThreadData[numThreads];
+			HANDLE* threads = new HANDLE[numThreads];
+			DWORD* threadIds = new DWORD[numThreads];
+
+			for (int i = 0; i < numThreads; i++) {
+				data[i].threadNum = i;
+				data[i].scene = scene;
+				data[i].light = lightInd;
+
+				threads[i] = CreateThread(
+					NULL,
+					0,
+					photonMapLoop,
+					&(data[i]),
+					0,
+					&(threadIds[i])
+				);
+			}
+
+			WaitForMultipleObjects(numThreads, threads, true, INFINITE);
+
+			for (int i = 0; i < numThreads; i++) {
+				CloseHandle(threads[i]);
+			}
+
+			delete[] data;
+			delete[] threads;
+			delete[] threadIds;
+		}
+		else {
+			numThreads = 1;
+			ThreadData data = { 0, scene, lightInd };
+			photonMapLoop(&data);
+		}
+	}
+}
+
+void jacksRenderScene(SceneIO* scene) {
 	if (useAcceleration && numThreads > 1) {
 		ThreadData* data = new ThreadData[numThreads];
 		HANDLE* threads = new HANDLE[numThreads];

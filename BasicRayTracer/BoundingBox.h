@@ -24,6 +24,8 @@ public:
 
 	bool intersect(const glm::vec3& vec, const glm::vec3& origin, glm::vec3& res);
 
+	bool intersectsBox(const glm::vec3& point, float radius);
+
 	bool inside(glm::vec3 point);
 };
 

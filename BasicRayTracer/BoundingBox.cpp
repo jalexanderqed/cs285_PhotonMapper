@@ -68,12 +68,25 @@ bool BoundingBox::intersect(const glm::vec3& vec, const glm::vec3& origin, glm::
 }
 
 bool BoundingBox::inside(glm::vec3 point) {
-	return point.x < vMax.x &&
-		point.x > vMin.x &&
-		point.y < vMax.y &&
-		point.y > vMin.y &&
-		point.z < vMax.z &&
-		point.z > vMin.z;
+	return point.x <= vMax.x &&
+		point.x >= vMin.x &&
+		point.y <= vMax.y &&
+		point.y >= vMin.y &&
+		point.z <= vMax.z &&
+		point.z >= vMin.z;
+}
+
+bool BoundingBox::intersectsBox(const glm::vec3& point, float radius) {
+	for (int i = 0; i < 3; i++) {
+		float smallVal = point[i] - radius;
+		float bigVal = point[i] + radius;
+		bool inside = (smallVal >= vMin[i] && smallVal <= vMax[i]) ||
+			(bigVal >= vMin[i] && bigVal <= vMax[i]) ||
+			(vMin[i] >= smallVal && vMin[i] <= bigVal) ||
+			(vMax[i] >= smallVal && vMax[i] <= bigVal);
+		if (!inside) return false;
+	}
+	return true;
 }
 
 BoundingBox boundPolySet(const PolySetIO* polySet) {

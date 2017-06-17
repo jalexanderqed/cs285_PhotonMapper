@@ -24,10 +24,17 @@ extern const int IMAGE_WIDTH;
 extern const int IMAGE_HEIGHT;
 extern const int SAMPLES_PER_PIXEL;
 extern float EPSILON;
+
+extern const uint64_t NUM_PHOTONS;
+extern float photonSearchRadius;
+extern float dOmega;
+
 extern float lensSide;
 extern int numThreads;
 extern bool complexColorShaders;
 extern unordered_map<const ObjIO*, int> sphereMap;
+
+extern BoundingBox sceneBox;
 
 extern CImage texture1;
 
@@ -35,9 +42,12 @@ extern list<ObjBound*> boundBoxes;
 
 void jacksRenderScene(SceneIO* scene);
 
+void jacksTracePhotons(SceneIO* scene);
+
 struct ThreadData {
 	int threadNum;
 	SceneIO* scene;
+	int light;
 };
 
 #endif // !TRACER_H

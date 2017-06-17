@@ -146,3 +146,30 @@ IntersectionPoint intersectScene(const glm::vec3& vec, const glm::vec3& origin, 
 	}
 	return finalPoint;
 }
+
+void insertPhoton(Photon p) {
+	for (ObjBound* bound : boundBoxes) {
+		if (bound->obj->type != SPHERE_OBJ && 
+			bound->boundBox->inside(p.position) && 
+			bound->insertPhoton(p))
+			return;
+	}
+
+	for (ObjBound* bound : boundBoxes) {
+		if (bound->obj->type == SPHERE_OBJ &&
+			bound->boundBox->inside(p.position) &&
+			bound->insertPhoton(p))
+			return;
+	}
+}
+
+list<Photon> getPhotons(const glm::vec3& position, float radius) {
+	list<Photon> res;
+	for (ObjBound* bound : boundBoxes) {
+		if (bound->boundBox->intersectsBox(position, radius)) {
+			list<Photon> pRes = bound->getPhotons(position, radius);
+			if (pRes.size() > 0) res.splice(res.end(), pRes);
+		}
+	}
+	return res;
+}

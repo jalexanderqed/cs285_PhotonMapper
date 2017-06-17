@@ -14,12 +14,18 @@
 #include <unordered_map>
 #include "PolyBound.h"
 
-const int IMAGE_WIDTH = 1500;
-const int IMAGE_HEIGHT = 1500;
+const int IMAGE_WIDTH = 500;
+const int IMAGE_HEIGHT = 500;
 float EPSILON = 0.00005f;
 const float EPS_FACTOR = 67000;
 
-int numThreads = 8;
+const float SEARCH_FACTOR = 10;
+const uint64_t NUM_PHOTONS = 8 * 30000;
+float photonSearchRadius = 0.01f;
+float dOmega;
+float lightOutput = 1000;
+
+int numThreads = 1;
 bool useAcceleration = true;
 bool complexColorShaders = false;
 bool complexIntersectShaders = false;
@@ -35,6 +41,8 @@ using namespace std;
 
 float *image;
 
+BoundingBox sceneBox;
+
 SceneIO *scene = NULL;
 list<ObjBound*> boundBoxes;
 LPCTSTR fileName;
@@ -46,7 +54,7 @@ static void loadScene(char *name) {
 	if (scene == NULL) exit(1);
 
 	// Calculates a custom epsilon value based on size of the scene
-	BoundingBox sceneBox = boundScene(scene);
+	sceneBox = boundScene(scene);
 	float diffBound = max(sceneBox.vMax.x - sceneBox.vMin.x, 
 		max(sceneBox.vMax.y - sceneBox.vMin.y, sceneBox.vMax.z - sceneBox.vMin.z)) / 2.0f;	
 	float posBound = max(sceneBox.vMax.x,
@@ -57,6 +65,8 @@ static void loadScene(char *name) {
 
 	// EPS_FACTOR was determined with testing of different epsilon values on scenes
 	EPSILON = min(largeBound / EPS_FACTOR, 0.0001f);
+	photonSearchRadius = largeBound / SEARCH_FACTOR;
+	dOmega = lightOutput / NUM_PHOTONS;
 
 	if (SAMPLES_PER_PIXEL != 1) {
 		int len = strlen(name);
@@ -128,9 +138,7 @@ inline void cross(const glm::vec3& v1, float* v2, float* res) {
 int main(int argc, char *argv[]) {
 
 	srand(time(NULL));
-	Timer total_timer;
-	Timer accelTimer;
-	Timer renderTimer;
+	Timer total_timer, accelTimer, photonTimer, renderTimer;
 	total_timer.startTimer();
 
 	if (argc < 2) {
@@ -157,6 +165,11 @@ int main(int argc, char *argv[]) {
 	loadScene(argv[1]);
 	accelTimer.stopTimer();
 	fprintf(stderr, "Scene-building time: %.5lf secs\n", accelTimer.getTime());
+
+	photonTimer.startTimer();
+	jacksTracePhotons(scene);
+	photonTimer.stopTimer();
+	fprintf(stderr, "Photon mapping time: %.5lf secs\n", photonTimer.getTime());
 
 	renderTimer.startTimer();
 	render();

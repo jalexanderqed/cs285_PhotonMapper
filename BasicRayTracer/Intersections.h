@@ -27,4 +27,8 @@ IntersectionPoint intersectScene(const glm::vec3& vec, const glm::vec3& origin, 
 
 glm::vec3 getNormal(IntersectionPoint iPoint);
 
+void insertPhoton(Photon p);
+
+list<Photon> getPhotons(const glm::vec3& position, float radius);
+
 #endif
